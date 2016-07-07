@@ -89,8 +89,7 @@ sub vcl_recv {
     #set req.backend_hint = cluster1.backend();
     if (req.restarts == 0) {
         if (req.http.x-forwarded-for) {
-            set req.http.X-Forwarded-For =
-            req.http.X-Forwarded-For + ", " + client.ip;
+            set req.http.X-Forwarded-For = req.http.X-Forwarded-For + ", " + client.ip;
         } else {
             set req.http.X-Forwarded-For = client.ip;
         }
@@ -160,15 +159,15 @@ sub vcl_pass {
     return (fetch);
 }
  
-sub vcl_hash {
-    hash_data(req.url);
-    if (req.http.host) {
-        hash_data(req.http.host);
-    } else {
-        hash_data(server.ip);
-    }
-    return (lookup);
-}
+#   sub vcl_hash {
+#       hash_data(req.url);
+#       if (req.http.host) {
+#           hash_data(req.http.host);
+#       } else {
+#           hash_data(server.ip);
+#       }
+#       return (lookup);
+#   }
  
 sub vcl_hit {
     return (deliver);
@@ -188,9 +187,7 @@ sub vcl_backend_response {
         set beresp.ttl = 120s;
     }
 
-    if (beresp.ttl <= 0s ||
-        beresp.http.Set-Cookie ||
-        beresp.http.Vary == "*") {
+    if (beresp.ttl <= 0s || beresp.http.Set-Cookie || beresp.http.Vary == "*") {
         /*
          * Mark as "Hit-For-Pass" for the next 2 minutes
          */

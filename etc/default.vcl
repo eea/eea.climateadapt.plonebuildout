@@ -6,62 +6,146 @@ import std;
 import directors;
 
 
-backend default {
-    .host = "127.0.0.1";
-    .port = "8000";
-}
+########backend default {
+########    .host = "127.0.0.1";
+########    .port = "8000";
+########}
 
 backend mil0101 {
     .host = "10.128.0.39";
     .port = "8001";
+    .probe = {
+         .url = "/varnish_probe";
+         .interval = 5s;
+         .timeout = 2s;
+         .window = 5;
+         .threshold = 3;
+    }
 }
 backend mil0102 {
     .host = "10.128.0.39";
     .port = "8002";
+    .probe = {
+         .url = "/varnish_probe";
+         .interval = 5s;
+         .timeout = 2s;
+         .window = 5;
+         .threshold = 3;
+    }
 }
 backend mil0103 {
     .host = "10.128.0.39";
     .port = "8003";
+    .probe = {
+         .url = "/varnish_probe";
+         .interval = 5s;
+         .timeout = 2s;
+         .window = 5;
+         .threshold = 3;
+    }
 }
 backend mil0104 {
     .host = "10.128.0.39";
     .port = "8004";
+    .probe = {
+         .url = "/varnish_probe";
+         .interval = 5s;
+         .timeout = 2s;
+         .window = 5;
+         .threshold = 3;
+    }
 }
 
 
 backend mil0201 {
     .host = "10.128.0.41";
     .port = "8001";
+    .probe = {
+         .url = "/varnish_probe";
+         .interval = 5s;
+         .timeout = 2s;
+         .window = 5;
+         .threshold = 3;
+    }
 }
 backend mil0202 {
     .host = "10.128.0.41";
     .port = "8002";
+    .probe = {
+         .url = "/varnish_probe";
+         .interval = 5s;
+         .timeout = 2s;
+         .window = 5;
+         .threshold = 3;
+    }
 }
 backend mil0203 {
     .host = "10.128.0.41";
     .port = "8003";
+    .probe = {
+         .url = "/varnish_probe";
+         .interval = 5s;
+         .timeout = 2s;
+         .window = 5;
+         .threshold = 3;
+    }
 }
 backend mil0204 {
     .host = "10.128.0.41";
     .port = "8004";
+    .probe = {
+         .url = "/varnish_probe";
+         .interval = 5s;
+         .timeout = 2s;
+         .window = 5;
+         .threshold = 3;
+    }
 }
 
 
 backend mil0301 {
     .host = "10.128.0.44";
     .port = "8001";
+    .probe = {
+         .url = "/varnish_probe";
+         .interval = 5s;
+         .timeout = 2s;
+         .window = 5;
+         .threshold = 3;
+    }
 }
 backend mil0302 {
     .host = "10.128.0.44";
     .port = "8002";
+    .probe = {
+         .url = "/varnish_probe";
+         .interval = 5s;
+         .timeout = 2s;
+         .window = 5;
+         .threshold = 3;
+    }
 }
 backend mil0303 {
     .host = "10.128.0.44";
     .port = "8003";
+    .probe = {
+         .url = "/varnish_probe";
+         .interval = 5s;
+         .timeout = 2s;
+         .window = 5;
+         .threshold = 3;
+    }
 }
 backend mil0304 {
     .host = "10.128.0.44";
     .port = "8004";
+    .probe = {
+         .url = "/varnish_probe";
+         .interval = 5s;
+         .timeout = 2s;
+         .window = 5;
+         .threshold = 3;
+    }
 }
 
 sub vcl_init {
@@ -86,7 +170,7 @@ sub vcl_init {
 }
 
 sub vcl_recv {
-    #set req.backend_hint = cluster1.backend();
+    set req.backend_hint = cluster1.backend();
     if (req.restarts == 0) {
         if (req.http.x-forwarded-for) {
             set req.http.X-Forwarded-For = req.http.X-Forwarded-For + ", " + client.ip;

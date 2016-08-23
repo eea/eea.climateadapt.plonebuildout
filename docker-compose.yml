@@ -1,0 +1,6 @@
+postfix:
+  image: eeacms/postfix:eionet
+  restart: always
+  env_file: .postfix_secret
+  ports: 
+      - "1025:25"

@@ -4,3 +4,25 @@ postfix:
   env_file: .postfix_secret
   ports: 
       - "1025:25"
+
+rabbitmq:
+  image: rabbitmq:3-management
+  hostname: eea-rabbit
+  restart: always
+  ports:
+      - 5672:5672 # port for the daemon API, can be exposed to public.
+      - 15672:15672 # port for the Management interface
+  env_file:
+      - .secret
+  volumes:
+      - /etc/localtime:/etc/localtime:ro
+  volumes_from:
+      - rabbitmqdata
+
+rabbitmqdata:
+  image: busybox
+  tty: true
+  command: chown -v -R 999:999 /var/lib/rabbitmq
+  volumes:
+      - /var/lib/rabbitmq
+  stdin_open: true

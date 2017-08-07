@@ -170,6 +170,21 @@ sub vcl_init {
 }
 
 sub vcl_recv {
+    # Before anything else we need to fix gzip compression
+    if (req.http.Accept-Encoding) {
+        if (req.url ~ "\.(jpg|png|gif|gz|tgz|bz2|tbz|mp3|ogg)$") {
+            # No point in compressing these
+            unset req.http.Accept-Encoding;
+        } else if (req.http.Accept-Encoding ~ "gzip") {
+            set req.http.Accept-Encoding = "gzip";
+        } else if (req.http.Accept-Encoding ~ "deflate") {
+            set req.http.Accept-Encoding = "deflate";
+        } else {
+            # unknown algorithm
+            unset req.http.Accept-Encoding;
+        }
+    }
+
     set req.backend_hint = cluster1.backend();
     if (req.restarts == 0) {
         if (req.http.x-forwarded-for) {
@@ -178,6 +193,7 @@ sub vcl_recv {
             set req.http.X-Forwarded-For = client.ip;
         }
     }
+
     if (req.method != "GET" &&
         req.method != "HEAD" &&
         req.method != "PUT" &&
@@ -188,11 +204,52 @@ sub vcl_recv {
         /* Non-RFC2616 or CONNECT which is weird. */
         return (pipe);
     }
+
     if (req.method != "GET" && req.method != "HEAD") {
         /* We only deal with GET and HEAD by default */
         return (pass);
     }
-    if (req.http.Authorization || req.http.Cookie) {
+
+    # cache authenticated requests by adding header
+    set req.http.X-Username = "Anonymous";
+    if (req.http.Cookie && req.http.Cookie ~ "__ac(|_(name|password|persistent))=")
+    {
+        set req.http.X-Username = regsub( req.http.Cookie, "^.*?__ac=([^;]*);*.*$", "\1" );
+
+        # pick up a round-robin instance for authenticated users
+        set req.backend_hint = cluster1.backend();
+
+        # pass (no caching)
+        unset req.http.If-Modified-Since;
+        return(pass);
+    }
+    else
+    {
+        # login form always goes to the reserved instances
+        if (req.url ~ "login_form$" || req.url ~ "login$")
+        {
+            set req.backend_hint = cluster1.backend();
+
+            # pass (no caching)
+            unset req.http.If-Modified-Since;
+            return(pass);
+        }
+        else
+        {
+            # downloads go only to these backends
+            if (req.url ~ "/(file|download)$" || req.url ~ "/(file|download)\?(.*)")
+            {
+                set req.backend_hint = cluster1.backend();
+            }
+            else
+            {
+                # pick up a random instance for anonymous users
+                set req.backend_hint = cluster1.backend();
+            }
+        }
+    }
+
+    if (req.http.Authorization) {
         /* Not cacheable by default */
         return (pass);
     }
@@ -243,16 +300,6 @@ sub vcl_pass {
     return (fetch);
 }
  
-#   sub vcl_hash {
-#       hash_data(req.url);
-#       if (req.http.host) {
-#           hash_data(req.http.host);
-#       } else {
-#           hash_data(server.ip);
-#       }
-#       return (lookup);
-#   }
- 
 sub vcl_hit {
     return (deliver);
 }
@@ -271,6 +318,13 @@ sub vcl_backend_response {
         set beresp.ttl = 120s;
     }
 
+    # cache all XML and RDF objects for 1 day
+    if (beresp.http.Content-Type ~ "(text\/xml|application\/xml|application\/atom\+xml|application\/rss\+xml|application\/rdf\+xml)") {
+        set beresp.ttl = 1d;
+        set beresp.http.X-Varnish-Caching-Rule-Id = "xml-rdf-files";
+        set beresp.http.X-Varnish-Header-Set-Id = "cache-in-proxy-24-hours";
+    }
+
     if (beresp.ttl <= 0s || beresp.http.Set-Cookie || beresp.http.Vary == "*") {
         /*
          * Mark as "Hit-For-Pass" for the next 2 minutes
@@ -284,6 +338,12 @@ sub vcl_backend_response {
 }
  
 sub vcl_deliver {
+    # add more cache control params for authenticated users so browser does NOT cache, also do not cache ourselves
+    if (resp.http.X-Backend ~ "auth") {
+      set resp.http.Cache-Control = "max-age=0, no-cache, no-store, private, must-revalidate, post-check=0, pre-check=0";
+      set resp.http.Pragma = "no-cache";
+    }
+
     return (deliver);
 }
  
